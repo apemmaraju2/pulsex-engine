@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PulseX Dashboard</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #101826, #05070c);
+      color: white;
+      font-family: Inter, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .container {
+      width: 92%;
+      max-width: 1300px;
+      padding: 40px 20px 60px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 40px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Stat cards */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: #05070c;
+      border-radius: 18px;
+      padding: 22px;
+      text-align: center;
+      box-shadow: 0 0 25px rgba(0,255,213,0.15);
+    }
+
+    .card-label {
+      font-size: 13px;
+      letter-spacing: 1px;
+      opacity: 0.7;
+      margin-bottom: 10px;
+    }
+
+    .card-value {
+      font-size: 32px;
+      font-weight: 700;
+    }
+
+    /* Chart container */
+    .chart-box {
+      background: #05070c;
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 0 35px rgba(0,255,213,0.12);
+    }
+
+    canvas {
+      height: 420px !important;
+    }
+
+    @media (max-width: 900px) {
+      .stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <h1> PulseX Live Dashboard</h1>
+
+    <!-- Metric Cards -->
+    <div class="stats">
+      <div class="card">
+        <div class="card-label">TX COUNT</div>
+        <div id="txCount" class="card-value">--</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">GAS SPIKE</div>
+        <div id="gasSpike" class="card-value">--</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">VELOCITY</div>
+        <div id="velocity" class="card-value">--</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">PRESSURE</div>
+        <div id="pressure" class="card-value">--</div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-box">
+      <canvas id="signalChart"></canvas>
+    </div>
+
+  </div>
+
+<script>
+const API_URL = "http://127.0.0.1:9000/signals/latest";
+const MAX_POINTS = 60;   // rolling window
+
+// ===============================
+// Chart Setup
+// ===============================
+const ctx = document.getElementById("signalChart").getContext("2d");
+
+const chart = new Chart(ctx, {
+  type: "line",
+  data: {
+    labels: [],
+    datasets: [
+      {
+        label: "Mempool Pressure",
+        data: [],
+        borderColor: "#00ffd5",
+        tension: 0.35,
+        pointRadius: 0,
+        yAxisID: "pressureAxis"
+      },
+      {
+        label: "Gas Spike",
+        data: [],
+        borderColor: "#ffd000",
+        tension: 0.35,
+        pointRadius: 0,
+        yAxisID: "gasAxis"
+      },
+      {
+        label: "Velocity",
+        data: [],
+        borderColor: "#4da3ff",
+        tension: 0.35,
+        pointRadius: 0,
+        yAxisID: "velocityAxis"
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    animation: { duration: 300 },
+    plugins: {
+      legend: {
+        labels: { color: "#ddd" }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: "#aaa" },
+        grid: { color: "#1a1f2b" }
+      },
+
+      pressureAxis: {
+        position: "left",
+        ticks: { color: "#00ffd5" },
+        grid: { color: "#1a1f2b" }
+      },
+
+      gasAxis: {
+        position: "right",
+        ticks: { color: "#ffd000" },
+        grid: { drawOnChartArea: false }
+      },
+
+      velocityAxis: {
+        position: "right",
+        offset: true,
+        ticks: { color: "#4da3ff" },
+        grid: { drawOnChartArea: false }
+      }
+    }
+  }
+});
+
+// ===============================
+// Data Loader
+// ===============================
+async function loadSignals() {
+  try {
+    const res = await fetch(API_URL);
+    const raw = await res.json();
+
+    console.log("API DATA:", raw);
+
+    if (!raw || !raw.timestamp) return;
+
+    // --------------------
+    // Update metric cards
+    // --------------------
+    document.getElementById("txCount").innerText =
+      raw.tx_count?.toLocaleString() ?? "--";
+
+    document.getElementById("gasSpike").innerText =
+      raw.gas_spike_index?.toFixed(2) ?? "--";
+
+    document.getElementById("velocity").innerText =
+      raw.tx_velocity?.toFixed(2) ?? "--";
+
+    document.getElementById("pressure").innerText =
+      raw.mempool_pressure?.toFixed(2) ?? "--";
+
+    // --------------------
+    // Update chart
+    // --------------------
+    const timeLabel = new Date(raw.timestamp).toLocaleTimeString();
+
+    chart.data.labels.push(timeLabel);
+    chart.data.datasets[0].data.push(Number(raw.mempool_pressure));
+    chart.data.datasets[1].data.push(Number(raw.gas_spike_index));
+    chart.data.datasets[2].data.push(Number(raw.tx_velocity));
+
+    // Trim old points
+    if (chart.data.labels.length > MAX_POINTS) {
+      chart.data.labels.shift();
+      chart.data.datasets.forEach(ds => ds.data.shift());
+    }
+
+    chart.update();
+
+  } catch (err) {
+    console.error("Fetch failed:", err);
+  }
+}
+
+// Initial load + refresh loop
+loadSignals();
+setInterval(loadSignals, 3000);
+</script>
+
+</body>
+</html>

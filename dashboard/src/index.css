@@ -1,0 +1,63 @@
+body {
+  margin: 0;
+  background: #121212;
+  color: white;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.app {
+  min-height: 100vh;
+  padding: 40px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  font-size: 48px;
+  margin-bottom: 40px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  width: 100%;
+  max-width: 1100px;
+  margin-bottom: 40px;
+}
+
+.card {
+  background: #0b0b0b;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.card.active {
+  opacity: 1;
+  box-shadow: 0 0 14px rgba(0,255,200,0.25);
+}
+
+.card p {
+  color: #aaa;
+  margin: 0;
+  font-size: 14px;
+}
+
+.card h2 {
+  margin: 10px 0 0;
+  font-size: 32px;
+}
+
+.chart {
+  width: 100%;
+  max-width: 1200px;
+}
